@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'models/note.dart';
 import 'screens/note_detail_screen.dart';
 import 'screens/note_editor_screen.dart';
+import 'services/note_storage.dart';
 import 'widgets/category_chip.dart';
 import 'widgets/note_card.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -46,7 +48,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final NoteStorage _noteStorage = NoteStorage();
   List<Note> _notes = [];
+  bool _isLoading = true;
   String _searchQuery = '';
   String _selectedCategory = 'Semua';
   final TextEditingController _searchController = TextEditingController();
@@ -54,7 +58,17 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    _notes = Note.getInitialSampleNotes();
+    _loadNotes();
+  }
+
+  Future<void> _loadNotes() async {
+    final notes = await _noteStorage.loadNotes();
+    if (mounted) {
+      setState(() {
+        _notes = notes;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -83,6 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _notes.insert(0, note);
     });
+    _noteStorage.saveNotes(_notes);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Catatan berhasil ditambahkan.')),
     );
@@ -95,12 +110,14 @@ class _MyHomePageState extends State<MyHomePage> {
         _notes[index] = note;
       }
     });
+    _noteStorage.saveNotes(_notes);
   }
 
   void _deleteNote(String id) {
     setState(() {
       _notes.removeWhere((n) => n.id == id);
     });
+    _noteStorage.saveNotes(_notes);
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Catatan telah dihapus.')));
@@ -268,7 +285,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
           // Notes List / Grid
           Expanded(
-            child: displayedNotes.isEmpty
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : displayedNotes.isEmpty
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(32.0),

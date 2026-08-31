@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:catatan_polnes/main.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('Menampilkan judul Catatan POLNES dan catatan contoh awal', (
     WidgetTester tester,
   ) async {
@@ -91,5 +96,35 @@ void main() {
 
     // Catatan tersebut harus terhapus
     expect(find.text('Pengantar Pemrograman Bergerak'), findsNothing);
+  });
+
+  testWidgets('Catatan baru tetap tersimpan setelah aplikasi dimuat ulang', (
+    WidgetTester tester,
+  ) async {
+    // Sesi Pertama: Buat catatan baru
+    await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    final textFields = find.byType(TextField);
+    await tester.enterText(textFields.at(0), 'Catatan Praktikum Persistensi');
+    await tester.enterText(
+      textFields.at(1),
+      'Data ini harus tetap ada saat app dibuka lagi.',
+    );
+
+    await tester.tap(find.byKey(const Key('save_note_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Catatan Praktikum Persistensi'), findsOneWidget);
+
+    // Sesi Kedua: Buka kembali aplikasi dari awal (simulasi restart app)
+    await tester.pumpWidget(const MyApp());
+    await tester.pumpAndSettle();
+
+    // Verifikasi catatan baru tetap ada
+    expect(find.text('Catatan Praktikum Persistensi'), findsOneWidget);
   });
 }
