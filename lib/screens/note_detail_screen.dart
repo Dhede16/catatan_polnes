@@ -100,6 +100,24 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
     widget.onNoteUpdated(updated);
   }
 
+  void _toggleTodoItem(String todoId) {
+    final updatedItems = _currentNote.todoItems.map((item) {
+      if (item.id == todoId) {
+        return item.copyWith(isDone: !item.isDone);
+      }
+      return item;
+    }).toList();
+
+    final updated = _currentNote.copyWith(
+      todoItems: updatedItems,
+      updatedAt: DateTime.now(),
+    );
+    setState(() {
+      _currentNote = updated;
+    });
+    widget.onNoteUpdated(updated);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cardBgColor = Color(_currentNote.colorValue);
@@ -211,18 +229,109 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
             const Divider(height: 28, thickness: 1),
 
             // Content
-            SelectableText(
-              _currentNote.content.isEmpty
-                  ? '(Catatan tidak memiliki isi teks)'
-                  : _currentNote.content,
-              style: TextStyle(
-                fontSize: 16,
-                height: 1.6,
-                color: _currentNote.content.isEmpty
-                    ? Colors.black38
-                    : Colors.black87,
+            if (_currentNote.content.isNotEmpty)
+              SelectableText(
+                _currentNote.content,
+                style: const TextStyle(
+                  fontSize: 16,
+                  height: 1.6,
+                  color: Colors.black87,
+                ),
+              )
+            else if (!_currentNote.hasTodos)
+              const SelectableText(
+                '(Catatan tidak memiliki isi teks)',
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.6,
+                  color: Colors.black38,
+                ),
               ),
-            ),
+
+            // Checklist Section
+            if (_currentNote.hasTodos) ...[
+              if (_currentNote.content.isNotEmpty)
+                const Divider(height: 28, thickness: 1),
+              const SizedBox(height: 4),
+              // Progress
+              Row(
+                children: [
+                  const Icon(
+                    Icons.checklist_rounded,
+                    size: 18,
+                    color: Colors.black54,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Checklist: ${_currentNote.completedTodoCount}/${_currentNote.totalTodoCount} selesai',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _currentNote.totalTodoCount > 0
+                      ? _currentNote.completedTodoCount /
+                            _currentNote.totalTodoCount
+                      : 0,
+                  minHeight: 6,
+                  backgroundColor: Colors.black.withAlpha(20),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    _currentNote.completedTodoCount ==
+                            _currentNote.totalTodoCount
+                        ? Colors.green
+                        : Colors.deepPurple,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Todo items
+              ..._currentNote.todoItems.map((item) {
+                return InkWell(
+                  onTap: () => _toggleTodoItem(item.id),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          item.isDone
+                              ? Icons.check_box
+                              : Icons.check_box_outline_blank,
+                          color: item.isDone
+                              ? Colors.deepPurple
+                              : Colors.black54,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            item.text,
+                            style: TextStyle(
+                              fontSize: 15,
+                              height: 1.4,
+                              color: item.isDone
+                                  ? Colors.black45
+                                  : Colors.black87,
+                              decoration: item.isDone
+                                  ? TextDecoration.lineThrough
+                                  : TextDecoration.none,
+                              decorationColor: Colors.black45,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
           ],
         ),
       ),

@@ -155,7 +155,7 @@ class NoteCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       note.content,
-                      maxLines: 4,
+                      maxLines: note.hasTodos ? 2 : 4,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 13,
@@ -164,7 +164,49 @@ class NoteCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  // Todo progress indicator
+                  if (note.hasTodos) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.checklist_rounded,
+                          size: 13,
+                          color: Colors.black54,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${note.completedTodoCount}/${note.totalTodoCount}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                note.completedTodoCount == note.totalTodoCount
+                                ? Colors.green.shade700
+                                : Colors.black54,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value:
+                                  note.completedTodoCount / note.totalTodoCount,
+                              minHeight: 4,
+                              backgroundColor: Colors.black.withAlpha(20),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                note.completedTodoCount == note.totalTodoCount
+                                    ? Colors.green
+                                    : Colors.deepPurple,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 6),
                   // Timestamp
                   Row(
                     children: [

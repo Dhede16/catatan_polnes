@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/note.dart';
+import '../models/todo_item.dart';
 
 class NoteEditorScreen extends StatefulWidget {
   final Note? note;
@@ -16,6 +17,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   late String _selectedCategory;
   late int _selectedColorValue;
   late bool _isPinned;
+  late List<TodoItem> _todoItems;
+  final Map<String, TextEditingController> _todoTextControllers = {};
 
   bool get _isEditing => widget.note != null;
 
@@ -29,12 +32,19 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _selectedCategory = widget.note?.category ?? 'Praktikum';
     _selectedColorValue = widget.note?.colorValue ?? Note.noteColors.first;
     _isPinned = widget.note?.isPinned ?? false;
+    _todoItems = List<TodoItem>.from(widget.note?.todoItems ?? []);
+    for (final item in _todoItems) {
+      _todoTextControllers[item.id] = TextEditingController(text: item.text);
+    }
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    for (final controller in _todoTextControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -42,10 +52,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
 
-    if (title.isEmpty && content.isEmpty) {
+    if (title.isEmpty && content.isEmpty && _todoItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Judul atau isi catatan tidak boleh kosong.'),
+          content: Text('Judul, isi, atau checklist tidak boleh kosong.'),
         ),
       );
       return;
@@ -53,6 +63,15 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
     final finalTitle = title.isEmpty ? 'Tanpa Judul' : title;
     final now = DateTime.now();
+
+    // Sync todo text from controllers
+    final syncedTodos = _todoItems
+        .map((item) {
+          final controller = _todoTextControllers[item.id];
+          return item.copyWith(text: controller?.text.trim() ?? item.text);
+        })
+        .where((item) => item.text.isNotEmpty)
+        .toList();
 
     final savedNote = Note(
       id: widget.note?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -63,6 +82,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       createdAt: widget.note?.createdAt ?? now,
       updatedAt: now,
       isPinned: _isPinned,
+      todoItems: syncedTodos,
     );
 
     Navigator.pop(context, savedNote);
@@ -258,11 +278,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Content Field
             TextField(
               controller: _contentController,
               maxLines: null,
-              minLines: 15,
+              minLines: 8,
               style: const TextStyle(
                 fontSize: 15,
                 height: 1.5,
@@ -274,9 +293,172 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 border: InputBorder.none,
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Checklist Section
+            _buildChecklistSection(),
           ],
         ),
       ),
+    );
+  }
+
+  void _addTodoItem() {
+    final newItem = TodoItem(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      text: '',
+    );
+    setState(() {
+      _todoItems.add(newItem);
+      _todoTextControllers[newItem.id] = TextEditingController();
+    });
+  }
+
+  void _removeTodoItem(String id) {
+    setState(() {
+      _todoItems.removeWhere((item) => item.id == id);
+      _todoTextControllers[id]?.dispose();
+      _todoTextControllers.remove(id);
+    });
+  }
+
+  void _toggleTodoItem(String id) {
+    setState(() {
+      final index = _todoItems.indexWhere((item) => item.id == id);
+      if (index != -1) {
+        _todoItems[index] = _todoItems[index].copyWith(
+          isDone: !_todoItems[index].isDone,
+        );
+      }
+    });
+  }
+
+  Widget _buildChecklistSection() {
+    final completedCount = _todoItems.where((item) => item.isDone).length;
+    final totalCount = _todoItems.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 20, thickness: 1),
+        // Header
+        Row(
+          children: [
+            const Icon(
+              Icons.checklist_rounded,
+              size: 20,
+              color: Colors.black54,
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Checklist Tugas',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _addTodoItem,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Tambah', style: TextStyle(fontSize: 13)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+        ),
+
+        // Progress
+        if (totalCount > 0) ...[
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: totalCount > 0 ? completedCount / totalCount : 0,
+              minHeight: 6,
+              backgroundColor: Colors.black.withAlpha(20),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                completedCount == totalCount ? Colors.green : Colors.deepPurple,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$completedCount/$totalCount tugas selesai',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+
+        // Todo items list
+        const SizedBox(height: 8),
+        ..._todoItems.map((item) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: Checkbox(
+                    value: item.isDone,
+                    onChanged: (_) => _toggleTodoItem(item.id),
+                    activeColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: TextField(
+                    controller: _todoTextControllers[item.id],
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                      decoration: item.isDone
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
+                      decorationColor: Colors.black54,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'Tulis item tugas...',
+                      hintStyle: TextStyle(color: Colors.black38, fontSize: 14),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 6),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  iconSize: 18,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close, color: Colors.black38),
+                  tooltip: 'Hapus item',
+                  onPressed: () => _removeTodoItem(item.id),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 }

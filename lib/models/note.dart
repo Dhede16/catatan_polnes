@@ -1,3 +1,5 @@
+import 'todo_item.dart';
+
 class Note {
   final String id;
   final String title;
@@ -7,6 +9,7 @@ class Note {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isPinned;
+  final List<TodoItem> todoItems;
 
   const Note({
     required this.id,
@@ -17,7 +20,17 @@ class Note {
     required this.createdAt,
     required this.updatedAt,
     this.isPinned = false,
+    this.todoItems = const [],
   });
+
+  /// Number of completed todo items.
+  int get completedTodoCount => todoItems.where((t) => t.isDone).length;
+
+  /// Total number of todo items.
+  int get totalTodoCount => todoItems.length;
+
+  /// Whether this note has any todo items.
+  bool get hasTodos => todoItems.isNotEmpty;
 
   Note copyWith({
     String? id,
@@ -28,6 +41,7 @@ class Note {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isPinned,
+    List<TodoItem>? todoItems,
   }) {
     return Note(
       id: id ?? this.id,
@@ -38,6 +52,7 @@ class Note {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isPinned: isPinned ?? this.isPinned,
+      todoItems: todoItems ?? this.todoItems,
     );
   }
 
@@ -51,10 +66,12 @@ class Note {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isPinned': isPinned,
+      'todoItems': todoItems.map((t) => t.toJson()).toList(),
     };
   }
 
   factory Note.fromJson(Map<String, dynamic> json) {
+    final rawTodos = json['todoItems'] as List<dynamic>?;
     return Note(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -64,6 +81,11 @@ class Note {
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       isPinned: json['isPinned'] as bool? ?? false,
+      todoItems:
+          rawTodos
+              ?.map((t) => TodoItem.fromJson(t as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
   }
 
