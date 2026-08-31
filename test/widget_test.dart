@@ -84,9 +84,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // Catatan awal ada di layar
-    expect(find.text('Pengantar Pemrograman Bergerak'), findsOneWidget);
+    expect(find.text('Jadwal Kuliah Semester Ini'), findsOneWidget);
 
-    // Tap tombol delete pada kartu pertama
+    // Tap tombol delete pada kartu pertama (Jadwal Kuliah Semester Ini)
     await tester.tap(find.byTooltip('Hapus Catatan').first);
     await tester.pumpAndSettle();
 
@@ -98,7 +98,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Catatan tersebut harus terhapus
-    expect(find.text('Pengantar Pemrograman Bergerak'), findsNothing);
+    expect(find.text('Jadwal Kuliah Semester Ini'), findsNothing);
   });
 
   testWidgets('Catatan baru tetap tersimpan setelah aplikasi dimuat ulang', (
@@ -179,6 +179,136 @@ void main() {
       // Verifikasi tema yang dimuat adalah tema gelap
       final MaterialApp reloadedApp = tester.widget(find.byType(MaterialApp));
       expect(reloadedApp.themeMode, ThemeMode.dark);
+    },
+  );
+
+  testWidgets(
+    'Mengurutkan catatan melalui PopupMenuButton (Terbaru, Terlama, Judul A-Z, Dipin)',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // Verifikasi tombol menu sortir ada di AppBar
+      final sortButton = find.byKey(const Key('sort_menu_button'));
+      expect(sortButton, findsOneWidget);
+
+      // 1. Uji Sortir Judul A-Z
+      await tester.tap(sortButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('sort_option_terbaru')), findsOneWidget);
+      expect(find.byKey(const Key('sort_option_terlama')), findsOneWidget);
+      expect(find.byKey(const Key('sort_option_judul')), findsOneWidget);
+      expect(find.byKey(const Key('sort_option_dipin')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('sort_option_judul')));
+      await tester.pumpAndSettle();
+
+      // Urutan Judul A-Z:
+      // 1. Jadwal Kuliah Semester Ini
+      // 2. Pengantar Pemrograman Bergerak
+      // 3. Tugas Desain UI Aplikasi Mobile
+      final cardTitlesJudul = find
+          .byType(Text)
+          .evaluate()
+          .where(
+            (e) => [
+              'Jadwal Kuliah Semester Ini',
+              'Pengantar Pemrograman Bergerak',
+              'Tugas Desain UI Aplikasi Mobile',
+            ].contains((e.widget as Text).data),
+          )
+          .map((e) => (e.widget as Text).data)
+          .toList();
+      expect(cardTitlesJudul, [
+        'Jadwal Kuliah Semester Ini',
+        'Pengantar Pemrograman Bergerak',
+        'Tugas Desain UI Aplikasi Mobile',
+      ]);
+
+      // 2. Uji Sortir Terlama
+      await tester.tap(sortButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('sort_option_terlama')));
+      await tester.pumpAndSettle();
+
+      // Urutan Terlama (2 hari lalu -> 1 hari lalu -> 5 jam lalu):
+      // 1. Pengantar Pemrograman Bergerak (2 days ago)
+      // 2. Tugas Desain UI Aplikasi Mobile (1 day ago)
+      // 3. Jadwal Kuliah Semester Ini (5 hours ago)
+      final cardTitlesTerlama = find
+          .byType(Text)
+          .evaluate()
+          .where(
+            (e) => [
+              'Jadwal Kuliah Semester Ini',
+              'Pengantar Pemrograman Bergerak',
+              'Tugas Desain UI Aplikasi Mobile',
+            ].contains((e.widget as Text).data),
+          )
+          .map((e) => (e.widget as Text).data)
+          .toList();
+      expect(cardTitlesTerlama, [
+        'Pengantar Pemrograman Bergerak',
+        'Tugas Desain UI Aplikasi Mobile',
+        'Jadwal Kuliah Semester Ini',
+      ]);
+
+      // 3. Uji Sortir Catatan yang Dipin
+      await tester.tap(sortButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('sort_option_dipin')));
+      await tester.pumpAndSettle();
+
+      // Urutan Dipin (isPinned=true first, then newest):
+      // 1. Pengantar Pemrograman Bergerak (pinned)
+      // 2. Jadwal Kuliah Semester Ini (5 hours ago)
+      // 3. Tugas Desain UI Aplikasi Mobile (1 day ago)
+      final cardTitlesDipin = find
+          .byType(Text)
+          .evaluate()
+          .where(
+            (e) => [
+              'Jadwal Kuliah Semester Ini',
+              'Pengantar Pemrograman Bergerak',
+              'Tugas Desain UI Aplikasi Mobile',
+            ].contains((e.widget as Text).data),
+          )
+          .map((e) => (e.widget as Text).data)
+          .toList();
+      expect(cardTitlesDipin, [
+        'Pengantar Pemrograman Bergerak',
+        'Jadwal Kuliah Semester Ini',
+        'Tugas Desain UI Aplikasi Mobile',
+      ]);
+
+      // 4. Uji Sortir Kembali ke Terbaru
+      await tester.tap(sortButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('sort_option_terbaru')));
+      await tester.pumpAndSettle();
+
+      // Urutan Terbaru (5 jam lalu -> 1 hari lalu -> 2 hari lalu):
+      // 1. Jadwal Kuliah Semester Ini
+      // 2. Tugas Desain UI Aplikasi Mobile
+      // 3. Pengantar Pemrograman Bergerak
+      final cardTitlesTerbaru = find
+          .byType(Text)
+          .evaluate()
+          .where(
+            (e) => [
+              'Jadwal Kuliah Semester Ini',
+              'Pengantar Pemrograman Bergerak',
+              'Tugas Desain UI Aplikasi Mobile',
+            ].contains((e.widget as Text).data),
+          )
+          .map((e) => (e.widget as Text).data)
+          .toList();
+      expect(cardTitlesTerbaru, [
+        'Jadwal Kuliah Semester Ini',
+        'Tugas Desain UI Aplikasi Mobile',
+        'Pengantar Pemrograman Bergerak',
+      ]);
     },
   );
 }

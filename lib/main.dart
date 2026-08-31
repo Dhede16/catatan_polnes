@@ -123,6 +123,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isLoading = true;
   String _searchQuery = '';
   String _selectedCategory = 'Semua';
+  NoteSortOption _selectedSort = NoteSortOption.terbaru;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -148,7 +149,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   List<Note> get _filteredNotes {
-    return _notes.where((note) {
+    final filtered = _notes.where((note) {
       final matchesSearch =
           note.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           note.content.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -156,11 +157,8 @@ class _MyHomePageState extends State<MyHomePage> {
           _selectedCategory == 'Semua' ||
           note.category.toLowerCase() == _selectedCategory.toLowerCase();
       return matchesSearch && matchesCategory;
-    }).toList()..sort((a, b) {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return b.updatedAt.compareTo(a.updatedAt);
-    });
+    }).toList();
+    return _selectedSort.sort(filtered);
   }
 
   void _addNote(Note note) {
@@ -297,6 +295,159 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
         actions: [
+          PopupMenuButton<NoteSortOption>(
+            key: const Key('sort_menu_button'),
+            icon: const Icon(Icons.sort_rounded),
+            tooltip: 'Urutkan Catatan',
+            initialValue: _selectedSort,
+            onSelected: (NoteSortOption option) {
+              setState(() {
+                _selectedSort = option;
+              });
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem(
+                key: const Key('sort_option_terbaru'),
+                value: NoteSortOption.terbaru,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 20,
+                      color: _selectedSort == NoteSortOption.terbaru
+                          ? theme.colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Terbaru',
+                        style: TextStyle(
+                          fontWeight: _selectedSort == NoteSortOption.terbaru
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: _selectedSort == NoteSortOption.terbaru
+                              ? theme.colorScheme.primary
+                              : null,
+                        ),
+                      ),
+                    ),
+                    if (_selectedSort == NoteSortOption.terbaru)
+                      Icon(
+                        Icons.check_rounded,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                key: const Key('sort_option_terlama'),
+                value: NoteSortOption.terlama,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.history_rounded,
+                      size: 20,
+                      color: _selectedSort == NoteSortOption.terlama
+                          ? theme.colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Terlama',
+                        style: TextStyle(
+                          fontWeight: _selectedSort == NoteSortOption.terlama
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: _selectedSort == NoteSortOption.terlama
+                              ? theme.colorScheme.primary
+                              : null,
+                        ),
+                      ),
+                    ),
+                    if (_selectedSort == NoteSortOption.terlama)
+                      Icon(
+                        Icons.check_rounded,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                key: const Key('sort_option_judul'),
+                value: NoteSortOption.judulAZ,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.sort_by_alpha_rounded,
+                      size: 20,
+                      color: _selectedSort == NoteSortOption.judulAZ
+                          ? theme.colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Judul A-Z',
+                        style: TextStyle(
+                          fontWeight: _selectedSort == NoteSortOption.judulAZ
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: _selectedSort == NoteSortOption.judulAZ
+                              ? theme.colorScheme.primary
+                              : null,
+                        ),
+                      ),
+                    ),
+                    if (_selectedSort == NoteSortOption.judulAZ)
+                      Icon(
+                        Icons.check_rounded,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                key: const Key('sort_option_dipin'),
+                value: NoteSortOption.dipin,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.push_pin_rounded,
+                      size: 20,
+                      color: _selectedSort == NoteSortOption.dipin
+                          ? theme.colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Catatan yang Dipin',
+                        style: TextStyle(
+                          fontWeight: _selectedSort == NoteSortOption.dipin
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: _selectedSort == NoteSortOption.dipin
+                              ? theme.colorScheme.primary
+                              : null,
+                        ),
+                      ),
+                    ),
+                    if (_selectedSort == NoteSortOption.dipin)
+                      Icon(
+                        Icons.check_rounded,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           IconButton(
             key: const Key('theme_toggle_button'),
             tooltip: isDarkMode

@@ -124,3 +124,55 @@ class Note {
     ];
   }
 }
+
+enum NoteSortOption { terbaru, terlama, judulAZ, dipin }
+
+extension NoteSortOptionExtension on NoteSortOption {
+  String get label {
+    switch (this) {
+      case NoteSortOption.terbaru:
+        return 'Terbaru';
+      case NoteSortOption.terlama:
+        return 'Terlama';
+      case NoteSortOption.judulAZ:
+        return 'Judul A-Z';
+      case NoteSortOption.dipin:
+        return 'Catatan yang Dipin';
+    }
+  }
+
+  List<Note> sort(List<Note> notes) {
+    final list = List<Note>.from(notes);
+    switch (this) {
+      case NoteSortOption.terbaru:
+        list.sort((a, b) {
+          final comp = b.updatedAt.compareTo(a.updatedAt);
+          if (comp != 0) return comp;
+          return b.id.compareTo(a.id);
+        });
+        break;
+      case NoteSortOption.terlama:
+        list.sort((a, b) {
+          final comp = a.updatedAt.compareTo(b.updatedAt);
+          if (comp != 0) return comp;
+          return a.id.compareTo(b.id);
+        });
+        break;
+      case NoteSortOption.judulAZ:
+        list.sort((a, b) {
+          final comp = a.title.toLowerCase().compareTo(b.title.toLowerCase());
+          if (comp != 0) return comp;
+          return b.updatedAt.compareTo(a.updatedAt);
+        });
+        break;
+      case NoteSortOption.dipin:
+        list.sort((a, b) {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return b.updatedAt.compareTo(a.updatedAt);
+        });
+        break;
+    }
+    return list;
+  }
+}
