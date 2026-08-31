@@ -26,6 +26,9 @@ void main() {
 
     // Verifikasi tombol tambah catatan
     expect(find.byType(FloatingActionButton), findsOneWidget);
+
+    // Verifikasi keberadaan tombol tema
+    expect(find.byKey(const Key('theme_toggle_button')), findsOneWidget);
   });
 
   testWidgets('Filter catatan berdasarkan pencarian teks', (
@@ -127,4 +130,55 @@ void main() {
     // Verifikasi catatan baru tetap ada
     expect(find.text('Catatan Praktikum Persistensi'), findsOneWidget);
   });
+
+  testWidgets(
+    'Tombol toggle tema mengubah mode tema terang ke gelap dan sebaliknya',
+    (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp(initialThemeMode: ThemeMode.light));
+      await tester.pumpAndSettle();
+
+      // Pastikan tema awal adalah terang
+      final MaterialApp appBefore = tester.widget(find.byType(MaterialApp));
+      expect(appBefore.themeMode, ThemeMode.light);
+
+      // Tap tombol beralih tema
+      await tester.tap(find.byKey(const Key('theme_toggle_button')));
+      await tester.pumpAndSettle();
+
+      // Verifikasi tema berubah menjadi gelap
+      final MaterialApp appAfterDark = tester.widget(find.byType(MaterialApp));
+      expect(appAfterDark.themeMode, ThemeMode.dark);
+
+      // Tap lagi untuk kembali ke tema terang
+      await tester.tap(find.byKey(const Key('theme_toggle_button')));
+      await tester.pumpAndSettle();
+
+      // Verifikasi tema kembali menjadi terang
+      final MaterialApp appAfterLight = tester.widget(find.byType(MaterialApp));
+      expect(appAfterLight.themeMode, ThemeMode.light);
+    },
+  );
+
+  testWidgets(
+    'Pilihan tema pengguna tetap tersimpan setelah aplikasi dimuat ulang',
+    (WidgetTester tester) async {
+      // Sesi Pertama: Buka aplikasi, ganti ke mode gelap
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('theme_toggle_button')));
+      await tester.pumpAndSettle();
+
+      final MaterialApp appDark = tester.widget(find.byType(MaterialApp));
+      expect(appDark.themeMode, ThemeMode.dark);
+
+      // Sesi Kedua: Buka kembali aplikasi dari awal (simulasi restart app)
+      await tester.pumpWidget(const MyApp());
+      await tester.pumpAndSettle();
+
+      // Verifikasi tema yang dimuat adalah tema gelap
+      final MaterialApp reloadedApp = tester.widget(find.byType(MaterialApp));
+      expect(reloadedApp.themeMode, ThemeMode.dark);
+    },
+  );
 }

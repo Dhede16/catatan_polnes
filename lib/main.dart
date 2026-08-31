@@ -3,6 +3,7 @@ import 'models/note.dart';
 import 'screens/note_detail_screen.dart';
 import 'screens/note_editor_screen.dart';
 import 'services/note_storage.dart';
+import 'services/theme_storage.dart';
 import 'widgets/category_chip.dart';
 import 'widgets/note_card.dart';
 
@@ -11,20 +12,61 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  final ThemeStorage? themeStorage;
+  final ThemeMode? initialThemeMode;
+
+  const MyApp({super.key, this.themeStorage, this.initialThemeMode});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final ThemeStorage _themeStorage;
+  late ThemeMode _themeMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _themeStorage = widget.themeStorage ?? ThemeStorage();
+    _themeMode = widget.initialThemeMode ?? ThemeMode.light;
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    if (widget.initialThemeMode == null) {
+      final savedTheme = await _themeStorage.loadThemeMode();
+      if (mounted) {
+        setState(() {
+          _themeMode = savedTheme;
+        });
+      }
+    }
+  }
+
+  void _toggleTheme() {
+    final newMode = _themeMode == ThemeMode.dark
+        ? ThemeMode.light
+        : ThemeMode.dark;
+    setState(() {
+      _themeMode = newMode;
+    });
+    _themeStorage.saveThemeMode(newMode);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Catatan POLNES',
       debugShowCheckedModeBanner: false,
+      themeMode: _themeMode,
       theme: ThemeData(
+        useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
           brightness: Brightness.light,
         ),
-        useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF8F9FA),
         appBarTheme: const AppBarTheme(
           centerTitle: false,
@@ -32,16 +74,44 @@ class MyApp extends StatelessWidget {
           backgroundColor: Colors.white,
           foregroundColor: Colors.black87,
         ),
+        cardTheme: CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
-      home: const MyHomePage(title: 'Catatan POLNES'),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 0,
+          backgroundColor: Color(0xFF1E1E1E),
+          foregroundColor: Colors.white,
+        ),
+        cardTheme: CardThemeData(
+          elevation: 2,
+          color: const Color(0xFF1E1E1E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+      home: MyHomePage(title: 'Catatan POLNES', onToggleTheme: _toggleTheme),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   final String title;
+  final VoidCallback? onToggleTheme;
 
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({super.key, required this.title, this.onToggleTheme});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -179,7 +249,13 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
     final displayedNotes = _filteredNotes;
+
+    final headerBgColor = isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
+    final searchFillColor = isDarkMode
+        ? const Color(0xFF2A2A2A)
+        : const Color(0xFFF1F3F5);
 
     return Scaffold(
       appBar: AppBar(
@@ -203,25 +279,41 @@ class _MyHomePageState extends State<MyHomePage> {
               children: [
                 Text(
                   widget.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
-                const Text(
+                Text(
                   'Buku Catatan Digital POLNES',
-                  style: TextStyle(fontSize: 11, color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            key: const Key('theme_toggle_button'),
+            tooltip: isDarkMode
+                ? 'Beralih ke Tema Terang'
+                : 'Beralih ke Tema Gelap',
+            icon: Icon(
+              isDarkMode ? Icons.light_mode : Icons.dark_mode_outlined,
+            ),
+            onPressed: widget.onToggleTheme,
+          ),
+        ],
       ),
       body: Column(
         children: [
           // Search Bar & Note Count header
           Container(
-            color: Colors.white,
+            color: headerBgColor,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Column(
               children: [
@@ -242,7 +334,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           )
                         : null,
                     filled: true,
-                    fillColor: const Color(0xFFF1F3F5),
+                    fillColor: searchFillColor,
                     contentPadding: const EdgeInsets.symmetric(
                       vertical: 0,
                       horizontal: 16,
@@ -297,7 +389,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           Icon(
                             Icons.note_alt_outlined,
                             size: 64,
-                            color: Colors.grey.shade400,
+                            color: theme.colorScheme.outline,
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -308,7 +400,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade700,
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -320,7 +412,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.grey.shade500,
+                              color: theme.colorScheme.outline,
                             ),
                           ),
                         ],
